@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Redstone Code Breaker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Minecraft-style pixel font & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --mc-wood-bg: #e2c185;
+            --mc-oak-dark: #825432;
+            --mc-oak-light: #f3dfb2;
+            --mc-stone: #8b8d8b;
+            --mc-redstone: #ff2200;
+            --mc-redstone-glow: rgba(255, 34, 0, 0.6);
+            --mc-emerald: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7ede2;
+            background-image: 
+                radial-gradient(#d4a373 15%, transparent 16%),
+                radial-gradient(#d4a373 15%, transparent 16%);
+            background-size: 32px 32px;
+            background-position: 0 0, 16px 16px;
+            color: #2b2d42;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        .font-pixel {
+            font-family: 'Press Start 2P', monospace;
+        }
+
+        .font-vt {
+            font-family: 'VT323', monospace;
+        }
+
+        /* Minecraft Pixelated UI Panel */
+        .mc-panel {
+            background: #f4ece1;
+            border: 4px solid #5c3a21;
+            box-shadow: 
+                inset -4px -4px 0px 0px #b89772,
+                inset 4px 4px 0px 0px #ffffff,
+                0px 6px 12px rgba(0,0,0,0.15);
+            border-radius: 4px;
+            image-rendering: pixelated;
+        }
+
+        .mc-panel-header {
+            background: #a67c52;
+            border-bottom: 4px solid #5c3a21;
+            color: #ffffff;
+            text-shadow: 2px 2px 0px #3a2210;
+        }
+
+        /* Slot Box (Minecraft Hotbar Style) */
+        .mc-slot {
+            width: 38px;
+            height: 42px;
+            background: #8f8f8f;
+            border: 3px solid #373737;
+            box-shadow: inset 3px 3px 0px #555555, inset -3px -3px 0px #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            font-weight: bold;
+            font-size: 14px;
+            color: #222;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .mc-slot.unlocked {
+            background: #e2f9d8;
+            border-color: #1b5e20;
+            box-shadow: inset 3px 3px 0px #81c784, inset -3px -3px 0px #2e7d32;
+            color: #0d5c11;
+            text-shadow: 0px 0px 4px rgba(16, 185, 129, 0.4);
+            animation: slotPop 0.3s ease-out;
+        }
+
+        .mc-slot.targeted {
+            border-color: #ff2200;
+            box-shadow: 0 0 10px #ff2200, inset 2px 2px 0px #ff8877;
+            animation: targetPulse 1s infinite alternate;
+        }
+
+        @keyframes targetPulse {
+            0% { transform: scale(1); box-shadow: 0 0 4px #ff2200; }
+            100% { transform: scale(1.08); box-shadow: 0 0 12px #ff2200; }
+        }
+
+        @keyframes slotPop {
+            0% { transform: scale(0.8); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+
+        /* Minecraft Styled Button */
+        .mc-btn {
+            background: #c6c6c6;
+            border: 3px solid #000;
+            box-shadow: inset -3px -3px 0px #555555, inset 3px 3px 0px #ffffff;
+            color: #222222;
+            font-family: 'Press Start 2P', monospace;
+            text-shadow: 1px 1px 0px #ffffff;
+            transition: all 0.1s ease;
+            cursor: pointer;
+        }
+
+        .mc-btn:hover:not(:disabled) {
+            background: #d8d8d8;
+            transform: translateY(-2px);
+        }
+
+        .mc-btn:active:not(:disabled) {
+            box-shadow: inset 3px 3px 0px #555555, inset -3px -3px 0px #ffffff;
+            transform: translateY(1px);
+        }
+
+        .mc-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            filter: grayscale(80%);
+        }
+
+        .mc-btn-choice {
+            background: #ffffff;
+            border: 3px solid #8b5a2b;
+            box-shadow: inset -3px -3px 0px #d4b896, inset 3px 3px 0px #ffffff, 0 3px 0 #5a3818;
+            color: #2c1a0e;
+            text-align: left;
+            transition: all 0.15s ease;
+        }
+
+        .mc-btn-choice:hover:not(:disabled) {
+            background: #fff8eb;
+            border-color: #e67e22;
+            transform: scale(1.01);
+        }
+
+        .mc-btn-choice.correct {
+            background: #d4edda !important;
+            border-color: #28a745 !important;
+            color: #155724 !important;
+            box-shadow: 0 0 10px #28a745 !important;
+        }
+
+        .mc-btn-choice.wrong {
+            background: #f8d7da !important;
+            border-color: #dc3545 !important;
+            color: #721c24 !important;
+            box-shadow: 0 0 10px #dc3545 !important;
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        /* Animated NPC Pixel Character */
+        .npc-container {
+            position: relative;
+            width: 80px;
+            height: 90px;
+        }
+
+        .npc-body {
+            width: 48px;
+            height: 72px;
+            background: #3b82f6;
+            border: 3px solid #1e3a8a;
+            position: absolute;
+            bottom: 0;
+            left: 16px;
+            border-radius: 4px;
+            animation: npcBob 2s infinite ease-in-out;
+        }
+
+        .npc-head {
+            width: 36px;
+            height: 36px;
+            background: #fbcfe8;
+            border: 3px solid #9d174d;
+            position: absolute;
+            top: -24px;
+            left: 3px;
+            border-radius: 2px;
+        }
+
+        .npc-eye {
+            width: 6px;
+            height: 6px;
+            background: #1e1b4b;
+            position: absolute;
+            top: 10px;
+        }
+
+        .npc-eye.left { left: 6px; }
+        .npc-eye.right { right: 6px; }
+
+        .npc-torch {
+            position: absolute;
+            right: -12px;
+            top: 20px;
+            width: 8px;
+            height: 24px;
+            background: #854d0e;
+            border: 1px solid #451a03;
+        }
+
+        .npc-flame {
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            position: absolute;
+            top: -10px;
+            left: -2px;
+            box-shadow: 0 0 8px #f59e0b, 0 0 14px #ef4444;
+            animation: flameFlicker 0.4s infinite alternate;
+        }
+
+        @keyframes npcBob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        @keyframes flameFlicker {
+            0% { transform: scale(1); opacity: 0.9; }
+            100% { transform: scale(1.25); opacity: 1; }
+        }
+
+        /* Progress XP Bar */
+        .xp-bar-bg {
+            background: #374151;
+            border: 2px solid #1f2937;
+            height: 16px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .xp-bar-fill {
+            background: linear-gradient(90deg, #10b981, #34d399);
+            height: 100%;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 8px #10b981;
+        }
+    </style>
+</head>
+<body class="p-2 md:p-6 flex flex-col items-center justify-start min-h-screen">
+
+    <!-- MAIN CONTAINER -->
+    <div class="w-full max-w-4xl flex flex-col gap-5">
+
+        <!-- HEADER BANNER -->
+        <header class="mc-panel p-4 text-center relative overflow-hidden">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">🧱</span>
+                    <div class="text-left">
+                        <h1 class="font-pixel text-lg md:text-xl text-amber-900 drop-shadow">REDSTONE CODE BREAKER</h1>
+                        <p class="text-xs font-bold text-amber-800 tracking-wide">MINECRAFT CIRCUIT EDITION</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleAudio()" id="audio-toggle-btn" class="mc-btn px-3 py-1.5 text-xs flex items-center gap-1.5 rounded">
+                        <i class="fa-solid fa-volume-high text-amber-900"></i>
+                        <span>SOUND ON</span>
+                    </button>
+                    <button onclick="confirmReset()" class="mc-btn px-3 py-1.5 text-xs flex items-center gap-1.5 rounded text-red-800">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>RESET</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- XP / PROGRESS BAR -->
+            <div class="mt-3">
+                <div class="flex justify-between items-center text-xs font-pixel text-amber-900 mb-1">
+                    <span id="stage-indicator">STAGE 1 / 29</span>
+                    <span id="completion-percentage" class="text-emerald-700">0% DECRYPTED</span>
+                </div>
+                <div class="xp-bar-bg">
+                    <div id="xp-fill" class="xp-bar-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- NPC REDSTONE ENGINEER & SPEECH DISPLAY -->
+        <div class="mc-panel p-4 flex flex-col sm:flex-row items-center gap-4 bg-amber-50/90">
+            <div class="npc-container flex-shrink-0">
+                <div class="npc-body">
+                    <div class="npc-head">
+                        <div class="npc-eye left"></div>
+                        <div class="npc-eye right"></div>
+                    </div>
+                    <div class="npc-torch">
+                        <div class="npc-flame"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-1 w-full">
+                <div class="bg-white border-2 border-amber-800 rounded-lg p-3 relative shadow-sm">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-pixel text-xs text-amber-900 font-bold">💬 REDSTONE ENGINEER:</span>
+                        <span class="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded font-mono font-bold">STAGE COMPANION</span>
+                    </div>
+                    <p id="paco-speech" class="text-sm md:text-base font-semibold text-stone-800 leading-snug">
+                        "Welcome! Solve circuit problems to transmit redstone signals and crack the hidden master code!"
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CRYPTOGRAM BOARD -->
+        <div class="mc-panel p-4 md:p-6 bg-amber-100/60">
+            <div class="flex items-center justify-between mb-3 border-b-2 border-amber-800/30 pb-2">
+                <h2 class="font-pixel text-xs md:text-sm text-amber-950 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-amber-700"></i> DECRYPTION HOTBAR (MASTER PHRASE)
+                </h2>
+                <span class="text-xs font-bold text-amber-800" id="unlocked-count-text">0 / 56 CHARACTERS</span>
+            </div>
+
+            <!-- PHRASE WORDS CONTAINER -->
+            <div id="phrase-container" class="flex flex-wrap gap-y-4 gap-x-6 justify-center py-2">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
+
+        <!-- QUESTION WORKBENCH PANEL -->
+        <main class="mc-panel p-4 md:p-6 flex flex-col gap-4">
+            
+            <!-- QUESTION HEADER -->
+            <div class="flex items-start justify-between gap-3 border-b-2 border-stone-300 pb-3">
+                <div>
+                    <span id="question-category-tag" class="inline-block px-2.5 py-1 rounded text-[10px] font-pixel font-bold bg-amber-800 text-amber-50 uppercase tracking-wider mb-2">
+                        TOPIC CATEGORY
+                    </span>
+                    <h3 id="question-text" class="text-base md:text-lg font-bold text-stone-900 leading-relaxed">
+                        Loading question...
+                    </h3>
+                </div>
+            </div>
+
+            <!-- SCHEMATIC / VISUAL AID BOX (IF APPLICABLE) -->
+            <div id="visual-aid-box" class="hidden bg-stone-100 border-2 border-stone-400 rounded-lg p-3 text-center my-1">
+                <div id="visual-aid-content" class="flex justify-center items-center flex-wrap gap-2">
+                    <!-- Custom SVG or visual block -->
+                </div>
+            </div>
+
+            <!-- MULTIPLE CHOICE OPTIONS -->
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                <!-- Dynamically generated choice buttons -->
+            </div>
+
+            <!-- FEEDBACK AND ACTION CONTAINER -->
+            <div id="feedback-box" class="hidden p-3 rounded-md border-2 text-center font-pixel text-xs transition-all duration-200">
+                <!-- Dynamic feedback message -->
+            </div>
+
+            <!-- NEXT STAGE BUTTON CONTAINER -->
+            <div id="next-btn-container" class="hidden text-right mt-2">
+                <button onclick="advanceQuestion()" class="mc-btn px-6 py-3 text-xs md:text-sm rounded font-bold bg-emerald-600 text-white border-emerald-900 flex items-center gap-2 ml-auto shadow-lg hover:bg-emerald-500">
+                    <span>NEXT CIRCUIT STAGE</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        // --- TARGET SECRET CODE ---
+        const TARGET_PHRASE = "IMA9INE 2040: DESIGNING THE WORLD WE WANT FOR A SUSTAINABLE FUTURE";
+
+        // --- GAME STATE ---
+        let currentQuestionIdx = 0;
+        let isAudioMuted = false;
+        let isQuestionAnswered = false;
+
+        // Slot tracking
+        let phraseSlotList = []; // Objects: { char, wordIdx, isSpace, isSymbol, slotId }
+        let questionToSlotsMap = {}; // Maps question index -> array of slot IDs unlocked by it
+        let unlockedSlotsSet = new Set(); // Set of unlocked slot IDs
+
+        // Audio Context Synthesizer
+        let audioCtx = null;
+
+        // --- QUESTION BANK (29 REVIEWER QUESTIONS FOR ST2) ---
+        const questionBankRaw = [
+            {
+                category: "RENEWABLE ENERGY",
+                question: "Which renewable energy source converts sunlight directly into electricity?",
+                options: ["Solar", "Wind", "Hydroelectric", "Biomass"],
+                answer: 0
+            },
+            {
+                category: "RENEWABLE ENERGY",
+                question: "Which renewable energy source is MOST suitable for an area with many rivers?",
+                options: ["Wind", "Biomass", "Hydroelectric", "Geothermal"],
+                answer: 2
+            },
+            {
+                category: "RENEWABLE ENERGY",
+                question: "Which renewable energy source uses steam from beneath the Earth's surface?",
+                options: ["Hydroelectric", "Geothermal", "Solar", "Wind"],
+                answer: 1
+            },
+            {
+                category: "RENEWABLE ENERGY",
+                question: "Which renewable energy source uses organic materials such as crop waste and animal manure?",
+                options: ["Biomass", "Solar", "Wind", "Hydroelectric"],
+                answer: 0
+            },
+            {
+                category: "ENERGY CONSERVATION",
+                question: "Which practice BEST helps conserve electrical energy?",
+                options: [
+                    "Using more incandescent bulbs",
+                    "Charging devices continuously",
+                    "Leaving lights on when leaving a room",
+                    "Turning off appliances when not in use"
+                ],
+                answer: 3
+            },
+            {
+                category: "ENVIRONMENTAL SCIENCE",
+                question: "Which is an environmental benefit of renewable energy?",
+                options: [
+                    "Produces more carbon dioxide",
+                    "Depends on fossil fuels",
+                    "Reduces air pollution",
+                    "Increases greenhouse gases"
+                ],
+                answer: 2
+            },
+            {
+                category: "RENEWABLE ENERGY",
+                question: "Which renewable energy source uses large rotating blades connected to a generator?",
+                options: ["Wind", "Biomass", "Geothermal", "Solar"],
+                answer: 0
+            },
+            {
+                category: "RENEWABLE ENERGY",
+                question: "Why are renewable energy resources called renewable?",
+                options: [
+                    "They never require maintenance",
+                    "They produce unlimited electricity",
+                    "They can naturally replenish over time",
+                    "They are always inexpensive"
+                ],
+                answer: 2
+            },
+            {
+                category: "RESISTOR COLOR CODES",
+                question: "Which color represents the digit 6 in resistor color coding?",
+                options: ["Violet", "Blue", "Green", "Gray"],
+                answer: 1
+            },
+            {
+                category: "RESISTOR COLOR CODES",
+                question: "Which color represents the digit 9 in resistor color coding?",
+                options: ["Black", "Violet", "White", "Gray"],
+                answer: 2
+            },
+            {
+                category: "RESISTOR COLOR CODES",
+                question: "What is the value of a resistor with the color bands Green – Blue – Brown – Gold?",
+                options: ["56 Ω ±5%", "560 Ω ±10%", "560 Ω ±5%", "5600 Ω ±5%"],
+                answer: 2,
+                visual: "green-blue-brown-gold"
+            },
+            {
+                category: "RESISTOR COLOR CODES",
+                question: "Which of these four-band resistors has the lowest total resistance?",
+                options: ["Red–Red–Brown", "Brown–Black–Brown", "Orange–Orange–Brown", "Yellow–Violet–Brown"],
+                answer: 1
+            },
+            {
+                category: "RESISTOR COLOR CODES",
+                question: "Which band indicates the tolerance of a standard 4-band resistor?",
+                options: ["Fourth", "First", "Third", "Second"],
+                answer: 0
+            },
+            {
+                category: "RESISTOR COLOR CODES",
+                question: "A resistor has a silver tolerance band. What is its tolerance rating?",
+                options: ["±2%", "±5%", "±10%", "±1%"],
+                answer: 2
+            },
+            {
+                category: "RESISTOR COLOR CODES",
+                question: "Which color band sequence represents a resistance value of 680 Ω?",
+                options: ["Blue–Gray–Brown", "Gray–Blue–Brown", "Blue–Blue–Brown", "Brown–Gray–Brown"],
+                answer: 0
+            },
+            {
+                category: "RESISTOR COLOR CODES",
+                question: "Why do standard electrical resistors use color bands instead of printed numbers?",
+                options: [
+                    "To improve resistance capacity",
+                    "To increase electrical conductivity",
+                    "To identify values easily on very small components",
+                    "To reduce manufacturing costs"
+                ],
+                answer: 2
+            },
+            {
+                category: "OHM'S LAW",
+                question: "Which equation represents Ohm's Law to calculate electric current (I)?",
+                options: ["V = IR²", "R = V ÷ I", "P = VI", "I = V ÷ R"],
+                answer: 3
+            },
+            {
+                category: "SERIES CIRCUITS",
+                question: "In a series circuit, which electrical quantity remains constant throughout all components?",
+                options: ["Voltage", "Resistance", "Power", "Current"],
+                answer: 3
+            },
+            {
+                category: "PARALLEL CIRCUITS",
+                question: "In a parallel circuit, which electrical quantity is identical across every branch?",
+                options: ["Resistance", "Current", "Power", "Voltage"],
+                answer: 3
+            },
+            {
+                category: "SERIES CIRCUITS",
+                question: "Which formula is used to calculate total equivalent resistance (RT) in a series circuit?",
+                options: ["RT = V − I", "RT = R1 + R2 + R3", "RT = V × I", "1/RT = 1/R1 + 1/R2 + 1/R3"],
+                answer: 1
+            },
+            {
+                category: "PARALLEL CIRCUITS",
+                question: "Which formula is used to calculate equivalent resistance (Req or RT) in a parallel circuit?",
+                options: ["RT = R1 × R2", "RT = R1 + R2 + R3", "RT = I × V", "1/RT = 1/R1 + 1/R2 + 1/R3"],
+                answer: 3
+            },
+            {
+                category: "OHM'S LAW",
+                question: "Which formula is used to calculate the voltage drop (V) across a resistor?",
+                options: ["P = VI", "R = V ÷ I", "I = V ÷ R", "V = IR"],
+                answer: 3
+            },
+            {
+                category: "PARALLEL CIRCUITS",
+                question: "Which formula calculates the electric current passing through a individual branch of a parallel circuit?",
+                options: ["V = I ÷ R", "R = V ÷ I", "Ibranch = V ÷ Rbranch", "P = VI"],
+                answer: 2
+            },
+            {
+                category: "SERIES CIRCUITS",
+                question: "If an additional resistor is added into a series circuit, what happens to the total resistance?",
+                options: ["It remains the same", "It drops to zero", "It increases", "It decreases"],
+                answer: 2
+            },
+            {
+                category: "PARALLEL CIRCUITS",
+                question: "If an additional branch with a resistor is added to a parallel circuit, what happens to equivalent resistance?",
+                options: ["It increases", "It doubles", "It decreases", "It remains unchanged"],
+                answer: 2
+            },
+            {
+                category: "SERIES CIRCUITS",
+                question: "In a series circuit, the total voltage supplied by the source (Vsource) is equal to:",
+                options: [
+                    "The total current multiplied by total resistance",
+                    "The voltage drop across the largest resistor only",
+                    "The sum of all individual voltage drops (V1 + V2 + ...)",
+                    "The average voltage of all resistors"
+                ],
+                answer: 2
+            },
+            {
+                category: "PARALLEL CIRCUITS",
+                question: "Which equation correctly verifies total current (IT) supplied to a parallel circuit?",
+                options: ["IT = I1 × I2 × I3", "IT = I1 − I2", "IT = I1 ÷ I2", "IT = I1 + I2 + I3"],
+                answer: 3
+            },
+            {
+                category: "CIRCUIT ANALYSIS",
+                question: "A student calculated total resistance of a parallel circuit by simply adding R1 + R2 + R3. What was the error?",
+                options: [
+                    "The student should have measured voltage first",
+                    "The student used Ohm's Law in reverse",
+                    "The student forgot to calculate current",
+                    "The student used the series formula instead of reciprocal parallel formula"
+                ],
+                answer: 3
+            },
+            {
+                category: "SERIES CIRCUITS",
+                question: "Which equation is used to verify that total source voltage equals individual drops in series?",
+                options: ["P = VI", "VT = V1 + V2 + V3", "RT = (R1 + R2) ÷ 2", "IT = I1 + I2 + I3"],
+                answer: 1
+            }
+        ];
+
+        let shuffledQuestions = [];
+
+        function playAudioTone(freq, duration, type = 'sine') {
+            if (isAudioMuted) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {
+                console.log("Audio not supported or blocked");
+            }
+        }
+
+        function toggleAudio() {
+            isAudioMuted = !isAudioMuted;
+            const btn = document.getElementById("audio-toggle-btn");
+            if (isAudioMuted) {
+                btn.innerHTML = `<i class="fa-solid fa-volume-xmark text-red-700"></i><span>MUTED</span>`;
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-volume-high text-amber-900"></i><span>SOUND ON</span>`;
+                playAudioTone(440, 0.1);
+            }
+        }
+
+        function initPhraseStructure() {
+            phraseSlotList = [];
+            const words = TARGET_PHRASE.split(" ");
+            let globalSlotId = 0;
+
+            words.forEach((word, wIdx) => {
+                for (let i = 0; i < word.length; i++) {
+                    const char = word[i];
+                    phraseSlotList.push({
+                        slotId: globalSlotId++,
+                        wordIdx: wIdx,
+                        char: char,
+                        isSymbol: (char === ':' || char === '-'),
+                        isSpace: false
+                    });
+                }
+            });
+        }
+
+        function setupScrambledSlotMap() {
+            questionToSlotsMap = {};
+            
+            // Collect all non-symbol slot IDs that need unlocking
+            let unlockableSlotIds = phraseSlotList
+                .filter(s => !s.isSymbol)
+                .map(s => s.slotId);
+
+            // Shuffle slot IDs randomly to ensure non-sequential unlocking
+            for (let i = unlockableSlotIds.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [unlockableSlotIds[i], unlockableSlotIds[j]] = [unlockableSlotIds[j], unlockableSlotIds[i]];
+            }
+
+            // Distribute slots across 29 questions evenly
+            const numQuestions = shuffledQuestions.length;
+            let currentSlotIdx = 0;
+
+            for (let q = 0; q < numQuestions; q++) {
+                questionToSlotsMap[q] = [];
+            }
+
+            while (currentSlotIdx < unlockableSlotIds.length) {
+                for (let q = 0; q < numQuestions && currentSlotIdx < unlockableSlotIds.length; q++) {
+                    questionToSlotsMap[q].push(unlockableSlotIds[currentSlotIdx]);
+                    currentSlotIdx++;
+                }
+            }
+        }
+
+        function renderCryptogramBoard() {
+            const container = document.getElementById("phrase-container");
+            container.innerHTML = "";
+
+            const words = TARGET_PHRASE.split(" ");
+            let currentGlobalSlot = 0;
+
+            // Target slots for current active question
+            const currentTargetSlots = new Set(questionToSlotsMap[currentQuestionIdx] || []);
+
+            words.forEach((word, wIdx) => {
+                const wordDiv = document.createElement("div");
+                wordDiv.className = "flex gap-1 bg-amber-200/50 p-1.5 rounded-lg border border-amber-300 shadow-inner";
+
+                for (let i = 0; i < word.length; i++) {
+                    const slotData = phraseSlotList[currentGlobalSlot];
+                    const slotEl = document.createElement("div");
+
+                    if (slotData.isSymbol) {
+                        slotEl.className = "mc-slot unlocked text-amber-900";
+                        slotEl.innerText = slotData.char;
+                    } else {
+                        const isUnlocked = unlockedSlotsSet.has(slotData.slotId);
+                        const isTargeted = !isUnlocked && currentTargetSlots.has(slotData.slotId);
+
+                        let classes = "mc-slot";
+                        if (isUnlocked) classes += " unlocked";
+                        if (isTargeted) classes += " targeted";
+
+                        slotEl.className = classes;
+
+                        if (isUnlocked) {
+                            slotEl.innerText = slotData.char;
+                        } else {
+                            slotEl.innerText = "?";
+                        }
+                    }
+
+                    wordDiv.appendChild(slotEl);
+                    currentGlobalSlot++;
+                }
+
+                container.appendChild(wordDiv);
+            });
+
+            // Update stats
+            const totalNonSymbol = phraseSlotList.filter(s => !s.isSymbol).length;
+            document.getElementById("unlocked-count-text").innerText = `${unlockedSlotsSet.size} / ${totalNonSymbol} CHARACTERS`;
+            
+            const pct = Math.round((unlockedSlotsSet.size / totalNonSymbol) * 100);
+            document.getElementById("completion-percentage").innerText = `${pct}% DECRYPTED`;
+            document.getElementById("xp-fill").style.width = `${pct}%`;
+            document.getElementById("stage-indicator").innerText = `STAGE ${currentQuestionIdx + 1} / ${shuffledQuestions.length}`;
+        }
+
+        function loadCurrentQuestion() {
+            isQuestionAnswered = false;
+
+            const qData = shuffledQuestions[currentQuestionIdx];
+            document.getElementById("question-category-tag").innerText = qData.category;
+            document.getElementById("question-text").innerText = `${currentQuestionIdx + 1}. ${qData.question}`;
+
+            // Reset Feedback Box
+            const feedbackBox = document.getElementById("feedback-box");
+            feedbackBox.className = "hidden p-3 rounded border-2 text-center font-pixel text-xs";
+            feedbackBox.innerHTML = "";
+
+            // Hide Next Button
+            document.getElementById("next-btn-container").classList.add("hidden");
+
+            // Schematics
+            const visualAidBox = document.getElementById("visual-aid-box");
+            const visualAidContent = document.getElementById("visual-aid-content");
+
+            if (qData.visual === "green-blue-brown-gold") {
+                visualAidBox.classList.remove("hidden");
+                visualAidContent.innerHTML = `
+                    <div class="flex items-center gap-1 bg-stone-300 p-2 rounded border border-stone-500 shadow">
+                        <span class="text-xs font-bold text-stone-700">Resistor Component:</span>
+                        <div class="w-20 h-6 bg-amber-100 border border-stone-600 rounded flex items-center justify-around px-1">
+                            <div class="w-2.5 h-full bg-green-600"></div>
+                            <div class="w-2.5 h-full bg-blue-600"></div>
+                            <div class="w-2.5 h-full bg-amber-800"></div>
+                            <div class="w-2.5 h-full bg-yellow-500"></div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                visualAidBox.classList.add("hidden");
+                visualAidContent.innerHTML = "";
+            }
+
+            // Options
+            const optionsContainer = document.getElementById("options-container");
+            optionsContainer.innerHTML = "";
+
+            qData.options.forEach((optText, idx) => {
+                const btn = document.createElement("button");
+                btn.className = "mc-btn-choice p-3 rounded font-semibold text-sm flex items-center gap-3 w-full";
+                btn.onclick = () => checkAnswer(idx, btn);
+
+                const letterBadge = String.fromCharCode(65 + idx);
+                btn.innerHTML = `
+                    <span class="w-7 h-7 flex items-center justify-center rounded bg-amber-800 text-amber-50 font-pixel text-xs flex-shrink-0">${letterBadge}</span>
+                    <span class="flex-1">${optText}</span>
+                `;
+                optionsContainer.appendChild(btn);
+            });
+
+            // Update NPC Speech
+            const genericQuotes = [
+                '"Carefully review the options before transmitting power!"',
+                '"Remember your series and parallel circuit rules!"',
+                '"Redstone signals require accuracy to crack the code!"',
+                '"Ohm\'s Law: Voltage equals Current times Resistance!"',
+                '"Keep going! Every correct circuit unlocks secret code letters!"'
+            ];
+            const randomQuote = genericQuotes[Math.floor(Math.random() * genericQuotes.length)];
+            document.getElementById("paco-speech").innerText = randomQuote;
+
+            // Update cryptogram targets
+            renderCryptogramBoard();
+        }
+
+        function checkAnswer(selectedIdx, btnElement) {
+            if (isQuestionAnswered) return;
+
+            const qData = shuffledQuestions[currentQuestionIdx];
+            const feedbackBox = document.getElementById("feedback-box");
+
+            if (selectedIdx === qData.answer) {
+                // --- CORRECT ANSWER ---
+                playAudioTone(587.33, 0.15); // High D tone
+                setTimeout(() => playAudioTone(880, 0.25), 150); // High A tone
+
+                btnElement.classList.add("correct");
+                
+                // Disable choices
+                const choices = document.querySelectorAll(".mc-btn-choice");
+                choices.forEach(c => c.disabled = true);
+
+                // Unlock assigned slots
+                const unlockedNow = questionToSlotsMap[currentQuestionIdx] || [];
+                unlockedNow.forEach(slotIdx => unlockedSlotsSet.add(slotIdx));
+
+                // Feedback
+                feedbackBox.className = "p-3 rounded border-2 text-center font-pixel text-xs bg-emerald-100 text-emerald-900 border-emerald-500 flex items-center justify-center gap-2";
+                feedbackBox.innerHTML = `<span>✅ REDSTONE POWER RESTORED! UNLOCKED SECRET LETTER(S)!</span>`;
+                feedbackBox.classList.remove("hidden");
+
+                // NPC Quote
+                document.getElementById("paco-speech").innerText = '"Excellent work! Redstone power transmitted smoothly!"';
+
+                // Re-render Cryptogram Board
+                renderCryptogramBoard();
+
+                isQuestionAnswered = true;
+                document.getElementById("next-btn-container").classList.remove("hidden");
+
+            } else {
+                // --- INCORRECT ANSWER (CRITICAL SHORT-CIRCUIT & FULL RESET) ---
+                playAudioTone(150, 0.4, 'sawtooth'); // Low buzz tone
+
+                btnElement.classList.add("wrong");
+                
+                // Disable choices
+                const choices = document.querySelectorAll(".mc-btn-choice");
+                choices.forEach(c => c.disabled = true);
+
+                // Wipe all progress immediately
+                unlockedSlotsSet.clear();
+                renderCryptogramBoard();
+
+                // Feedback
+                feedbackBox.className = "p-3 rounded border-2 text-center font-pixel text-xs bg-red-100 text-red-900 border-red-500 flex flex-col items-center justify-center gap-2";
+                feedbackBox.innerHTML = `
+                    <span>💥 CRITICAL SHORT-CIRCUIT! CIRCUIT OVERLOADED!</span>
+                    <span class="text-[10px] text-stone-700">Code decrypted memory corrupt! Progress reset to Stage 1!</span>
+                    <button onclick="resetGame()" class="mc-btn px-4 py-2 mt-1 text-[10px] font-pixel rounded shadow text-stone-900">
+                        🔄 RESTART FROM STAGE 1
+                    </button>
+                `;
+                feedbackBox.classList.remove("hidden");
+
+                // Update NPC Quote
+                document.getElementById("paco-speech").innerText = '"Oh no! A wrong connection blew the circuit memory! We must start over!"';
+            }
+        }
+
+        function advanceQuestion() {
+            if (currentQuestionIdx < shuffledQuestions.length - 1) {
+                currentQuestionIdx++;
+                loadCurrentQuestion();
+            } else {
+                // VICTORY SCREEN
+                playAudioTone(523.25, 0.2);
+                setTimeout(() => playAudioTone(659.25, 0.2), 200);
+                setTimeout(() => playAudioTone(783.99, 0.4), 400);
+
+                const optionsContainer = document.getElementById("options-container");
+                optionsContainer.innerHTML = `
+                    <div class="col-span-full p-6 bg-emerald-100 border-4 border-emerald-600 rounded-lg text-center flex flex-col items-center gap-3">
+                        <span class="text-4xl">🎉🏆 Minecraft Redstone Master!</span>
+                        <h2 class="font-pixel text-sm md:text-base text-emerald-900">MASTER CODE FULLY DECRYPTED!</h2>
+                        <div class="p-4 bg-white border-2 border-emerald-500 rounded font-bold text-amber-900 text-lg md:text-xl font-mono tracking-widest shadow-inner">
+                            "${TARGET_PHRASE}"
+                        </div>
+                        <p class="text-xs text-emerald-800 font-semibold">You have successfully solved all 29 circuit review questions!</p>
+                        <button onclick="resetGame()" class="mc-btn px-6 py-2.5 text-xs rounded font-bold bg-amber-800 text-amber-50">
+                            🔄 PLAY AGAIN
+                        </button>
+                    </div>
+                `;
+
+                document.getElementById("feedback-box").classList.add("hidden");
+                document.getElementById("next-btn-container").classList.add("hidden");
+                document.getElementById("paco-speech").innerText = '"CONGRATULATIONS! You decoded the secret message and mastered electrical circuits!"';
+            }
+        }
+
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function confirmReset() {
+            resetGame();
+        }
+
+        function resetGame() {
+            currentQuestionIdx = 0;
+            unlockedSlotsSet.clear();
+            shuffledQuestions = shuffleArray(questionBankRaw);
+            initPhraseStructure();
+            setupScrambledSlotMap();
+            loadCurrentQuestion();
+        }
+
+        // --- WINDOW ONLOAD INITIALIZATION ---
+        window.onload = function() {
+            resetGame();
+        };
+    </script>
+</body>
+</html>
